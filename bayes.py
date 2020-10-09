@@ -60,7 +60,8 @@ class Bayes_naif:
                 for word in abstract:
                     for ex in range(0,(self.n_classes)) :
                         if word in self.train_dict[ex] :
-                            answers[ex]+=self.train_dict[ex][word]
+                            p=self.train_dict[ex][word]
+                            answers[ex]*=p
                         
               
                 y.append(self.classes[np.argmax(answers)])
@@ -82,6 +83,6 @@ filter1[np.random.random_integers(0,7499,5000)]+=1
 filter2=np.abs(filter1-1)
 
 
-df1=train.values[0:5000,:]
+df1=train.values[0:4000,:]
 df2=train.values[5000:7500,:]
 erreur,y=error_rate(df1,df2)
