@@ -40,11 +40,11 @@ class Bayes_naif:
             for abstract in self.train_inputs[np.where(self.train_inputs[:,2]==c)][:,1] :
                 word_bank+=abstract.split()
             for word in word_bank:
-                
+                 
                  if (word in self.train_dict[ex]) :
-                     self.train_dict[ex][word]+=1/len(word_bank)
+                     self.train_dict[ex][word]+=1/len(word_bank)*10000#pour une raison X il faut multiplier ici...
                  else :
-                     self.train_dict[ex].update([(word,1/len(word_bank))])
+                     self.train_dict[ex].update([(word,1/len(word_bank)*10000)])
             
            
       
@@ -59,12 +59,16 @@ class Bayes_naif:
                 
                 for word in abstract:
                     for ex in range(0,(self.n_classes)) :
+                        if answers[ex]==0 and word in self.train_dict[ex]:
+                             p=self.train_dict[ex][word]
+                             answers[ex]=p
                         if word in self.train_dict[ex] :
                             p=self.train_dict[ex][word]
+                            
                             answers[ex]*=p
-                        
-              
-                y.append(self.classes[np.argmax(answers)])
+                            
+                #print(answers)
+                y.append(self.classes[np.argmax(answers*self.n_byclasses)])
                     
 
             return y
@@ -79,10 +83,22 @@ def error_rate(train,val_data):
 
     
 filter1=np.zeros(7500,dtype=np.int32)
-filter1[np.random.random_integers(0,7499,5000)]+=1
+filter1[np.random.randint(0,7499,5000)]+=1
 filter2=np.abs(filter1-1)
 
 
-df1=train.values[0:4000,:]
-df2=train.values[5000:7500,:]
+df1=train.values[0:6000,:]
+df2=train.values[6000:7500,:]
 erreur,y=error_rate(df1,df2)
+test=pd.read_csv('data/test.csv')
+
+f=Bayes_naif(train.values,train.values[:,2])
+f.train()
+# print(f.train_dict)
+y=f.compute_predictions(test.values)
+numpy_data=np.zeros((2,1500))
+numpy_data[0,:]=np.arange(0,1500)
+numpy_data[1,:]=y
+df = pd.DataFrame(data=numpy_data, index=["Id", "Category"]
+
+df.to_csv('solution.csv')
