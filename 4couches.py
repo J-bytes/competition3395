@@ -36,12 +36,35 @@ beta1,beta2=0.9,0.999
 eps=1e-8
 m=1
 
+
 train=pd.read_csv('data/train.csv')
+df1=train.values[0:6000,:]
+df2=train.values[6000:7500,:]
+temp_word=[]
+for abstract in df1[:,1] :
+        temp_word+=abstract.lower().split()
+      
+answer_dict=np.unique(df1[:,2])
+dict=np.unique(temp_word)
+n_dict=len(dict)
+
+def answer2vec(sujet) :
+    vecteur=np.zeros(len(answer_dict))
+    vecteur[np.where(answer_dict==sujet)]+=1
+    return vecteur
+def word2vec(abstract) :
+        words=abstract.lower().split()
+        vecteur=np.zeros(n_dict)
+        for word in words :
+            vecteur[np.where(dict==word)[0]]+=1
+        
+      
+        return vecteur
 #==================================================================
 def innitialisation() :
    
    
-    ni,nh,nn,no,nf,nl    =13,20,16,12,8,1        # nombre d’unites d’entree, interne et de sortie
+    ni,nh,nn,no,nf,nl    =n_dict,20,16,12,8,15        # nombre d’unites d’entree, interne et de sortie
     wih   =np.zeros([ni,nh])   # poids des connexions entree vers interne
     bih   =np.zeros([ni,nh])
     whn   =np.zeros([nh,nn])   # poids des connexions interne vers sortie
@@ -259,25 +282,28 @@ def randomize(n):
 def training(param) :
     global bestf,bestx,m,compteur
     wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=param
-    nset  =1000              # nombre de membres dans ensemble d’entrainement
-    niter =100            # nombre d’iterations d’entrainement
+    nset  =6000              # nombre de membres dans ensemble d’entrainement
+    niter =20            # nombre d’iterations d’entrainement
     oset  =np.zeros([nset,nl]) # sortie pour l’ensemble d’entrainement
     tset  =np.zeros([nset,ni]) # vecteurs-entree l’ensemble d’entrainement
     rmserr=np.zeros(niter)     # erreur rms d’entrainement
     
     #lecture/initialisationdel’ensembled’entrainement
-    
-    tset=np.loadtxt('trainingdata.txt',skiprows=1,usecols=(0,1,2,3,4,5,6,7,8,9,10,11,12))[0:nset,:]                          # diverses instructions...
-    oset[:,0]=np.loadtxt('trainingdata.txt',skiprows=1,usecols=(13))[0:nset]  
+    for i in range(0,nset) :
+        print(i)
+        tset[i,:]=word2vec(df1[i,1])
+                        
+        oset[i]=answer2vec(df1[i,2])
     
     tset=normalisation(tset)
     
-    
+    err2=0
     for iter in range(0,niter):       # boucle sur les iteration d’entrainement
             sum=0.
-            print(iter)
+            
             rvec=randomize(nset)           # melange des membres
             for itrain in range(0,nset):   # boucle sur l’ensemble d’entrainement
+                print(iter,itrain,err2)
                 itt=rvec[itrain]            # le membre choisi...
                 ivec=tset[itt,:]            # ...et son vecteur d’entree
                 param=wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl
@@ -314,34 +340,47 @@ def prediction(param) :
     #Cette fonction permet de classifier les données non utilisés lors de l'entrainement pour permettre
     #de déterminer quel pourcentage des données sont bien classifier à une itération donnée
     wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=param
-    tset=np.loadtxt('trainingdata.txt',skiprows=1,usecols=(0,1,2,3,4,5,6,7,8,9,10,11,12))
-    tset=normalisation(tset) # normalisation
-    nset2=1000 #nombre d'événement tester
-   
-    tset=tset[1000:2000]
-    cheatsheet=np.loadtxt('trainingdata.txt',skiprows=1,usecols=(13))[2000-nset2:2000]
-    reponse=np.zeros(nset2)
+    #tset=np.loadtxt('trainingdata.txt',skiprows=1,usecols=(0,1,2,3,4,5,6,7,8,9,10,11,12))
+    nset2=1500 #nombre d'événement tester
+    oset  =np.zeros([nset2,nl]) # sortie pour l’ensemble d’entrainement
+    tset  =np.zeros([nset2,ni]) # vecteurs-entree l’ensemble d’entrainement
+    
+    cheatsheet  =np.zeros([nset2,nl])
+    for i in range(0,nset2) :
+        tset[i,:]=word2vec(df1[i,1])
+        cheatsheet[i]=answer2vec(df1[i,2])               
+        oset[i]=answer2vec(df1[i,2])
+    
+    tset=normalisation(tset)
+    
+  
+    reponse=np.zeros([nset2,nl])
     for i in range(0,nset2) :
         ivec=tset[i,:]
         wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=ffnn([wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl])
-        reponse[i]=sl
+        reponse[i]=sl[:]
     return reponse,cheatsheet
 
 
 param=innitialisation()
 param=training(param)
 reponse,cheatsheet=prediction(param)
-rep=np.round(reponse,0)
-vp=len(np.where(np.logical_and(rep==1,cheatsheet==1))[0])#vrai positif
-fp=len(np.where(np.logical_and(rep==1,cheatsheet==0))[0])#faux positif
-fn=len(np.where(np.logical_and(rep==0,cheatsheet==1))[0])#faux négatif
-vn=len(np.where(np.logical_and(rep==0,cheatsheet==0))[0])#vrai negatif
-plt.plot(np.abs(cheatsheet-reponse),'.')
-plt.show()
-print(len(np.where(np.abs(cheatsheet-np.round(reponse,0))==0)[0]))
+#answer_dict[np.argmax(sl)]
+#rep=np.round(reponse,0)
+
+test=pd.read_csv('data/test.csv').values
+final_answer=np.zeros(len(test))
+
+for (ex,input) in enumerate(test[:,1]) :
+    vecteur=word2vec(input)
+    wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=ffnn(param)
+    output=np.argmax(sl)
+    final_answer[ex]=np.unique(df1[:,2])[output]
+
+df=pd.DataFrame(final_answer, columns=["Category"])
+df.to_csv('solution.csv')
 #######################################################################
-tsetpaul=np.loadtxt('testdata.txt',skiprows=1,usecols=(0,1,2,3,4,5,6,7,8,9,10,11,12))
-reponsepaul=np.zeros((len(tsetpaul[:,0])))
+"""
 wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=param
 for i in range(0,len(tsetpaul[:,0])) :
     ivec=tsetpaul[i,:]
@@ -349,3 +388,4 @@ for i in range(0,len(tsetpaul[:,0])) :
     wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=ffnn((wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl))
     reponsepaul[i]=np.round(sl,0)
 np.savetxt('reponse_paul9.txt',reponsepaul,fmt='%.1d')
+"""

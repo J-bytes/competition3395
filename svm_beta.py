@@ -25,7 +25,12 @@ def f(x,y,w,lambd) :
 
 class Bayes_naif:
     def __init__(self,train_inputs,train_labels):
-        
+        temp_word=[]
+        for abstract in self.train_inputs[:,1] :
+                temp_word+=abstract.lower().split()
+                
+        self.dict=temp_word.unique()
+        self.n_dict=len(self.dict)
         self.n_classes = len(np.unique(train_labels))
         self.classes=np.unique(train_labels)
         self.train_inputs=train_inputs
@@ -34,21 +39,23 @@ class Bayes_naif:
         for (ex,c) in enumerate(self.classes) :
             nn[ex]+=len(np.where(train_inputs[:,2]==c)[0])
         self.n_byclasses=nn
+        
         for i in range(0,len(self.classes)) :
             self.train_dict.append({})
             
             
-    def word2vec(self) :
-        temp_word=[]
-        for abstract in self.train_inputs[:,1] :
-                temp_word+=abstract.split()
-        nbMot=len(temp_word.unique())
+    def word2vec(self,abstract) :
+        words=abstract.lower().split()
+        vecteur=np.zeros(self.n_dict)
+        for word in words :
+            vecteur[np.where(self.dict==word)[0]]+=1
         
-        dict_vect=np.zeros((nbMot,nbMot))
-        for (ex,word) in temp_word.unique() :
-            dict_vect[ex][ex]=1
-        
-        return dict_vect,nbMot,temp_word.unique()
+        return vecteur
+    
+    def answer2vec(sujet) :
+        vecteur=np.zeros(len(answer_dict))
+        vecteur[np.where(answer_dict==sujet)]+=1
+        return vecteur
             
     def train(self,w,lambd):
         
@@ -81,8 +88,8 @@ def error_rate(train,val_data):
     
 
 
-df1=train.values[0:6000,:]
-df2=train.values[6000:7500,:]
+df1=train.values[0:444,:]
+df2=train.values[444:7500,:]
 #erreur,y,hype=error_rate(df1,df2)
 test=pd.read_csv('data/test.csv')
 #%%
