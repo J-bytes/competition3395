@@ -28,30 +28,44 @@ class Bayes_naif:
         for (ex,c) in enumerate(self.classes) :
             nn[ex]+=len(np.where(train_inputs[:,2]==c)[0])
         self.n_byclasses=nn
-        for i in range(0,len(self.classes)) :
-            self.train_dict.append({})
+       
             
             
         
     def train(self):
-        
+        word_dict={}
+        word_bank=[]
         for (ex,c) in enumerate(self.classes) :
-            word_bank=[]
+           
             for abstract in self.train_inputs[np.where(self.train_inputs[:,2]==c)][:,1] :
                 word_bank+=abstract.split()
-            for word in word_bank:
-                 
-                 if (word in self.train_dict[ex]) :
-                     self.train_dict[ex][word]+=1/len(word_bank)*15000#pour une raison X il faut multiplier ici...
-                 else :                                               #python doit avoir de la misere a gerer les trop petits nombres
-                     self.train_dict[ex].update([(word,1/len(word_bank)*15000)])
-            
-           
-      
-       
         
+           
+        
+        for word in word_bank:
+             word=word.lower()
+             #word=word.isalnum()
+             if word not in word_dict:
+                 word_dict.update([word,np.zeros((self.n_classes))])
+        
+        for (ex,c) in enumerate(self.classes) :
+         word_bank=[]
+         for abstract in self.train_inputs[np.where(self.train_inputs[:,2]==c)][:,1] :
+             word_bank+=abstract.split()
+             
+             for word in word_bank:
+                  word=word.lower()
+                  #word=word.isalnum()
+                 
+                  word_dict[word][ex]+=1
+               
+         
+        
+   
+    
+     
 
-    def compute_predictions(self, test_data):
+    def compute_predictions(self, test_data,hyper_param):
             global abstract
             y=[]
             for (i,abstract) in enumerate(test_data[:,1]) :
@@ -59,41 +73,58 @@ class Bayes_naif:
                 answers=np.zeros(self.n_classes)
                 abstract=np.array(abstract)
                 for word in abstract:
+                    word=word.lower()
+                    #word=word.isalnum()
                     for ex in range(0,(self.n_classes)) :
                         if answers[ex]==0 and word in self.train_dict[ex]:
                              p=self.train_dict[ex][word]
                              answers[ex]=p
                         if word in self.train_dict[ex] :
-                            p=self.train_dict[ex][word]
+                            Pmot=0
+                            for ex2 in range(0,(self.n_classes)) :
+                                try : 
+                                    Pmot+=self.train_dict[ex2][word]
+                                except :
+                                    Pmot+=0
+                                    
+                            p=self.train_dict[ex][word]*self.n_byclasses[ex]/Pmot
                             
-                            answers[ex]*=p
+                            answers[ex]*=p/hyper_param #!!!! overflow
+                            #print(answers[ex])
                             
                 #print(answers)
-                y.append(self.classes[np.argmax(answers*self.n_byclasses)])
+                y.append(self.classes[np.argmax(answers)])
                     
 
             return y
             
 def error_rate(train,val_data):
-    f=Bayes_naif(train,train[:,2])
-    f.train()
-   # print(f.train_dict)
-    y=f.compute_predictions(val_data)
-    errors=len(np.where(y!=val_data[:,2])[0])/len(val_data[:,2])
-    return errors,y
+    erreur_min=1
+    
+    for hyper_param in np.arange(0,100,1) :
+        f=Bayes_naif(train,train[:,2])
+        f.train()
+       # print(f.train_dict)
+        y=f.compute_predictions(val_data,hyper_param)
+        errors=len(np.where(y!=val_data[:,2])[0])/len(val_data[:,2])
+        if errors<erreur_min:
+            yy=y
+            erreur_min=errors
+            hype=hyper_param
+    return erreur_min,yy,hype
 
     
 
 
 df1=train.values[0:6000,:]
 df2=train.values[6000:7500,:]
-erreur,y=error_rate(df1,df2)
+erreur,y,hype=error_rate(df1,df2)
 test=pd.read_csv('data/test.csv')
-
+#%%
 f=Bayes_naif(train.values,train.values[:,2])
 f.train()
 # print(f.train_dict)
-y=f.compute_predictions(test.values)
+y=f.compute_predictions(test.values,hype)
 
 df = pd.DataFrame(y, columns=["Category"])
 df.to_csv('solution.csv')
