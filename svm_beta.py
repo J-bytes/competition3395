@@ -7,6 +7,7 @@ Created on Thu Oct  8 19:09:04 2020
 import numpy as np
 import pandas as pd
 import regex as re
+from scipy.sparse import identity,csr_matrix
 train=pd.read_csv('data/train.csv')
 def draw_rand_label(x, label_list):
     seed = abs(np.sum(x))
@@ -39,7 +40,7 @@ class Bayes_naif:
             nn[ex]+=len(np.where(train_inputs[:,2]==c)[0])
         self.n_byclasses=nn
         
-        self.w=np.random.random((self.n_dict,self.n_dict))
+        self.w=identity(self.n_dict)*np.random.random()
         self.b=np.random.random()
         for i in range(0,len(self.classes)) :
             self.train_dict.append({})
@@ -62,10 +63,15 @@ class Bayes_naif:
         #le but est de minimiser norme(w)?
         for (ex,abstract) in enumerate(self.train_inputs[:,1]) :
             vecteur=self.word2vec(abstract)
-            y=self.w*vecteur+self.b
-            C=np.where(self.classes==self.train_inputs[ex,2])[0]
-            delta=(y-C)**2*self.w#!!!!
-            dw=self.w*y
+            print(ex)
+            
+            y=np.round(np.max(csr_matrix.dot(np.transpose(self.w),vecteur[:,np.newaxis])+self.b),0)
+          
+            C=np.where(self.classes==self.train_inputs[ex,2])[0][0]
+            
+            delta=(y-C)**2
+            
+            dw=self.w*delta
             self.w+=dw
             self.b+=delta
             
@@ -79,8 +85,8 @@ class Bayes_naif:
             y=[]
             for abstract in test_data[:,1] :
                vecteur=self.word2vec(abstract)
-               y=self.w*vecteur+self.b
-               y.append(self.classes[int(np.round(y,0))])
+               results=np.round(np.max(self.w*vecteur+self.b),0)
+               y.append(self.classes[int(np.round(results,0))])
             return y
             
 def error_rate(train,val_data):
@@ -100,7 +106,7 @@ def error_rate(train,val_data):
 
 df1=train.values[0:444,:]
 df2=train.values[444:7500,:]
-#erreur,y,hype=error_rate(df1,df2)
+erreur,y=error_rate(df1,df2)
 test=pd.read_csv('data/test.csv')
 #%%
 f=Bayes_naif(train.values,train.values[:,2])
