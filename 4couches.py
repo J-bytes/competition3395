@@ -367,18 +367,7 @@ param=training(param)
 reponse,cheatsheet=prediction(param)
 #answer_dict[np.argmax(sl)]
 #rep=np.round(reponse,0)
-
-test=pd.read_csv('data/test.csv').values
-final_answer=np.zeros(len(test))
-
-for (ex,input) in enumerate(test[:,1]) :
-    vecteur=word2vec(input)
-    wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=ffnn(param)
-    output=np.argmax(sl)
-    final_answer[ex]=np.unique(df1[:,2])[output]
-
-df=pd.DataFrame(final_answer, columns=["Category"])
-df.to_csv('solution.csv')
+ 
 #######################################################################
 """
 wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=param

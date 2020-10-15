@@ -38,7 +38,8 @@ class Bayes_naif:
         for (ex,c) in enumerate(self.classes) :
             word_bank=[]
             for abstract in self.train_inputs[np.where(self.train_inputs[:,2]==c)][:,1] :
-                word_bank+=abstract.split()
+                abstract=re.sub(r"[^a-zA-Z0-9]+", ' ', abstract)
+                word_bank+=abstract.lower().split()
                 
             for word in word_bank:
                  word=word.lower()
@@ -57,7 +58,8 @@ class Bayes_naif:
             global abstract
             y=[]
             for (i,abstract) in enumerate(test_data[:,1]) :
-                abstract=abstract.split()
+                abstract=re.sub(r"[^a-zA-Z0-9]+", ' ', abstract)
+                abstract=abstract.lower().split()
                 answers=np.zeros(self.n_classes)
                 abstract=np.array(abstract)
                 for word in abstract:

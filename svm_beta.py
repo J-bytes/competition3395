@@ -6,7 +6,7 @@ Created on Thu Oct  8 19:09:04 2020
 """
 import numpy as np
 import pandas as pd
-
+import regex as re
 train=pd.read_csv('data/train.csv')
 def draw_rand_label(x, label_list):
     seed = abs(np.sum(x))
@@ -19,71 +19,81 @@ def draw_rand_label(x, label_list):
 
 
 
-def f(x,y,w,lambd) :
-    n=len(x)
-    return 1/n*np.sum(np.max([0,1-y*(w*x-b)]))+lambd*np.linalg.norm(w)**2
-
 class Bayes_naif:
     def __init__(self,train_inputs,train_labels):
-        temp_word=[]
-        for abstract in self.train_inputs[:,1] :
-                temp_word+=abstract.lower().split()
+        self.temp_word=[]
+        for abstract in train_inputs[:,1] :
+                abstract=re.sub(r"[^a-zA-Z0-9]+", ' ', abstract)
+             
+                self.temp_word+=abstract.lower().split()
                 
-        self.dict=temp_word.unique()
+        self.dict=np.unique(self.temp_word)
         self.n_dict=len(self.dict)
         self.n_classes = len(np.unique(train_labels))
         self.classes=np.unique(train_labels)
         self.train_inputs=train_inputs
         self.train_dict=[]
+        
         nn=np.zeros((self.n_classes))
         for (ex,c) in enumerate(self.classes) :
             nn[ex]+=len(np.where(train_inputs[:,2]==c)[0])
         self.n_byclasses=nn
         
+        self.w=np.random.random((self.n_dict,self.n_dict))
+        self.b=np.random.random()
         for i in range(0,len(self.classes)) :
             self.train_dict.append({})
             
             
     def word2vec(self,abstract) :
+        abstract=re.sub(r"[^a-zA-Z0-9]+", ' ', abstract)
+             
         words=abstract.lower().split()
         vecteur=np.zeros(self.n_dict)
         for word in words :
-            vecteur[np.where(self.dict==word)[0]]+=1
+            if word in self.dict :
+                vecteur[np.where(self.dict==word)[0]]+=1
         
         return vecteur
     
-    def answer2vec(sujet) :
-        vecteur=np.zeros(len(answer_dict))
-        vecteur[np.where(answer_dict==sujet)]+=1
-        return vecteur
+   
             
-    def train(self,w,lambd):
-        
-       
+    def train(self):
+        #le but est de minimiser norme(w)?
+        for (ex,abstract) in enumerate(self.train_inputs[:,1]) :
+            vecteur=self.word2vec(abstract)
+            y=self.w*vecteur+self.b
+            C=np.where(self.classes==self.train_inputs[ex,2])[0]
+            delta=(y-C)**2*self.w#!!!!
+            dw=self.w*y
+            self.w+=dw
+            self.b+=delta
+            
         
            
       
        
         
 
-    def compute_predictions(self, test_data,hyper_param):
-         
+    def compute_predictions(self, test_data):
+            y=[]
+            for abstract in test_data[:,1] :
+               vecteur=self.word2vec(abstract)
+               y=self.w*vecteur+self.b
+               y.append(self.classes[int(np.round(y,0))])
             return y
             
 def error_rate(train,val_data):
-    erreur_min=1
+     erreur_min=1
     
-    for hyper_param in np.arange(0,100,1) :
-        f=Bayes_naif(train,train[:,2])
-        f.train()
-       # print(f.train_dict)
-        y=f.compute_predictions(val_data,hyper_param)
-        errors=len(np.where(y!=val_data[:,2])[0])/len(val_data[:,2])
-        if errors<erreur_min:
-            yy=y
-            erreur_min=errors
-            hype=hyper_param
-    return erreur_min,yy,hype
+   
+     f=Bayes_naif(train,train[:,2])
+     f.train()
+     # print(f.train_dict)
+     y=f.compute_predictions(val_data)
+     errors=len(np.where(y!=val_data[:,2])[0])/len(val_data[:,2])
+     
+     return errors,y
 
     
 
