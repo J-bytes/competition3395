@@ -64,7 +64,7 @@ def word2vec(abstract) :
 def innitialisation() :
    
    
-    ni,nh,nn,no,nf,nl    =n_dict,20,16,12,8,15        # nombre d’unites d’entree, interne et de sortie
+    ni,nh,nn,no,nf,nl    =n_dict,100,20,15,15,15        # nombre d’unites d’entree, interne et de sortie
     wih   =np.zeros([ni,nh])   # poids des connexions entree vers interne
     bih   =np.zeros([ni,nh])
     whn   =np.zeros([nh,nn])   # poids des connexions interne vers sortie
@@ -87,7 +87,7 @@ def innitialisation() :
     deltao=np.zeros(no)        # gradient d’erreur des neurones de sortie
     deltan=np.zeros(nn)        # gradient d’erreur des neurones internes
     deltah=np.zeros(nh)        # gradient d’erreur des neurones internes
-    eta   =0.001                 # parametre d’apprentissage
+    eta   =0.01                # parametre d’apprentissage
   
     
     #initialisation aléatoire des biais et des poids
@@ -158,13 +158,13 @@ def ffnn(param):
     wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=param
 
     #Couche d'input à première couche interne
-    sh[:]=relu( np.sum(wih*ivec.reshape(ni,1)+bih,axis=0))        
+    sh[:]=sigmoide( np.sum(wih*ivec.reshape(ni,1)+bih,axis=0))        
     #-----------------------------
     #couches internes
     
     #1 à 2
     shtemp=sh.reshape(nh,1)    
-    sn[:]=relu(np.sum(whn[:,:]*shtemp[:,:]+bhn,axis=0))              
+    sn[:]=sigmoide(np.sum(whn[:,:]*shtemp[:,:]+bhn,axis=0))              
     
     #2 à 3
     sntemp=sn.reshape(nn,1)
@@ -239,7 +239,7 @@ def backprop(param):
    
     bno[:,:]+=db
     sum=np.sum((deltao[:]*wno[:,:]),axis=1)
-    deltan[:]=drelu(sn[:])*sum        #évaluation de l'erreur en ce point du réseau   
+    deltan[:]=dsigmoide(sn[:])*sum        #évaluation de l'erreur en ce point du réseau   
         
     dw=np.outer(deltan[:],sh[:]).transpose()  #calcul du gradient 
     mw4,vw4,dw=adam(mw4,vw4,beta1,beta2,eta,dw)  #appel d'Adam pour calculer la variation à effectuer sur les poids
@@ -253,7 +253,7 @@ def backprop(param):
    
     bhn[:,:]+=db
     sum=np.sum((deltan[:]*whn[:,:]),axis=1)
-    deltah[:]=drelu(sh[:])*sum           # Eq. (6.21)
+    deltah[:]=dsigmoide(sh[:])*sum           # Eq. (6.21)
         
     dw=np.outer(deltah[:],ivec[:]).transpose()
     mw5,vw5,dw=adam(mw5,vw5,beta1,beta2,eta,dw) #appel d'Adam pour calculer la variation à effectuer sur les poids
@@ -283,7 +283,7 @@ def training(param) :
     global bestf,bestx,m,compteur
     wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=param
     nset  =6000              # nombre de membres dans ensemble d’entrainement
-    niter =20            # nombre d’iterations d’entrainement
+    niter =25            # nombre d’iterations d’entrainement
     oset  =np.zeros([nset,nl]) # sortie pour l’ensemble d’entrainement
     tset  =np.zeros([nset,ni]) # vecteurs-entree l’ensemble d’entrainement
     rmserr=np.zeros(niter)     # erreur rms d’entrainement
@@ -318,7 +318,7 @@ def training(param) :
             
             rmserr[iter]=math.sqrt(sum/nset/1)   # erreur rms a cette iteration
             
-            reponse,cheatsheet=prediction(param)
+            reponse,cheatsheet=prediction(param,df1,nset)
             plt.plot(iter,1-len(np.where(np.abs(cheatsheet-np.round(reponse,0))==0)[0])/1000,'.',color='red')
           
             #Maintenantlaphasedetestiraitci-dessous...
@@ -335,13 +335,13 @@ def training(param) :
     return wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl
    
 
-def prediction(param) :
+def prediction(param,df1,nset2) :
     
     #Cette fonction permet de classifier les données non utilisés lors de l'entrainement pour permettre
     #de déterminer quel pourcentage des données sont bien classifier à une itération donnée
     wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=param
     #tset=np.loadtxt('trainingdata.txt',skiprows=1,usecols=(0,1,2,3,4,5,6,7,8,9,10,11,12))
-    nset2=1500 #nombre d'événement tester
+     #nombre d'événement tester
     oset  =np.zeros([nset2,nl]) # sortie pour l’ensemble d’entrainement
     tset  =np.zeros([nset2,ni]) # vecteurs-entree l’ensemble d’entrainement
     
@@ -364,7 +364,7 @@ def prediction(param) :
 
 param=innitialisation()
 param=training(param)
-reponse,cheatsheet=prediction(param)
+reponse,cheatsheet=prediction(param,df2,1500)
 #answer_dict[np.argmax(sl)]
 #rep=np.round(reponse,0)
  

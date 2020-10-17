@@ -40,8 +40,8 @@ class LinearModel:
             nn[ex]+=len(np.where(train_inputs[:,2]==c)[0])
         self.n_byclasses=nn
         
-        self.w=np.ones((15,15,self.n_dict))
-        self.b=np.random.random(15)
+        self.w=np.random.random((15,15))
+        self.b=np.random.random(size=(15,15))
         for i in range(0,len(self.classes)) :
             self.train_dict.append({})
             
@@ -61,17 +61,21 @@ class LinearModel:
     def error_rate(self, X, y,ex1,ex2): 
         """Retourne le taux d'erreur pour un batch X
         """
-        return np.mean(self.predict(X,ex1,ex2) * y < 0)
+        y=np.array(y)[:,np.newaxis]
+        return np.mean(y*self.predict(X,ex1,ex2)  < 0)
 
     # les méthodes loss et gradient seront redéfinies dans les classes enfants
     def loss(self, X, y): 
         return 0
     
     def predict(self,X,ex1,ex2) :
-        return np.dot(X,self.w[ex1,ex2][:,np.newaxis])
-    def gradient(self, X, y): 
-        return self.w
-            
+        aa=np.dot(X,self.w[ex1,ex2])+self.b[ex1,ex2]
+        return -np.sign(aa)
+    def gradient(self, X, y,ex1,ex2): 
+        y=np.array(y)
+        #yy=self.w[ex1,ex2]*y
+        #return np.max([yy,np.zeros(len(y))],axis=0)
+        return ((self.predict(X,ex1,ex2) - y[:, np.newaxis]) * X).mean(axis=0)
     def train(self,n_steps,stepsize):
         #le but est de minimiser norme(w)?
         
@@ -83,33 +87,37 @@ class LinearModel:
                 print(ex1,ex2)
                 if c1!=c2 :
                     for (ex,abstract) in enumerate(self.train_inputs[:,1][np.where(self.train_inputs[:,2]==c1)]) :
-                        X.append(self.word2vec(abstract))
+                        vecteur=self.word2vec(abstract)
+                        vecteur=(-vecteur+1)**len(vecteur)
+                        X.append(vecteur)
                         y.append(-1)
                         
                     for (ex,abstract) in enumerate(self.train_inputs[:,1][np.where(self.train_inputs[:,2]==c2)]) :
-                        X.append(self.word2vec(abstract))
+                        vecteur=self.word2vec(abstract)
+                        vecteur=(vecteur+1)**len(vecteur)
+                        X.append(vecteur)
                         y.append(+1)
                     
                         
                         
                     
-                      
+                   
                     losses = []
                     errors = []
             
                     for i in range(n_steps):
                         # Gradient Descent
-                        self.w[ex1,ex2] -= stepsize * self.gradient(X, y)[ex1,ex2]
-            
+                        self.w[ex1,ex2] -= stepsize *np.mean(self.gradient(X, y,ex1,ex2))
+                        self.b[ex1,ex2] -= stepsize*self.b[ex1,ex2]
                         # Update losses
                         losses += [self.loss(X, y)]
-            
+                        print(self.w[ex1,ex2],self.error_rate(X, y,ex1,ex2))
                         # Update errors
                         errors += [self.error_rate(X, y,ex1,ex2)]
                
                     X=[]
                     y=[]
-                    print(errors)
+                    
                
             
     
@@ -121,10 +129,13 @@ class LinearModel:
                for ex1 in range(0,15) :
                    for ex2 in range(0,15) :
                        if ex1!=ex2 :
-                           f=np.dot(self.w[ex1,ex2],vecteur)
+                           f=self.predict(vecteur,ex1,ex2)
                            if f<0 :
                                results[ex1]+=1
+                           else :
+                               results[ex2]+=1
                                
+               print(results)
                y.append(self.classes[np.argmax(results)])
             return y
             
@@ -156,7 +167,7 @@ df2=train.values[6000:7500,:]
 test=pd.read_csv('data/test.csv')
 #%%
 f=LinearModel(df1,df1[:,2])
-f.train(300,1)
+f.train(100,5)
 # print(f.train_dict)
 y=f.compute_predictions(df2)
 print(len(np.where(y!=df2[:,2])[0]))
