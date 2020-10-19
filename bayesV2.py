@@ -41,12 +41,14 @@ class Bayes_naif:
         for (ex,c) in enumerate(self.classes) :
             word_bank=[]
             for abstract in self.train_inputs[np.where(self.train_inputs[:,2]==c)][:,1] :
-                abstract=re.sub(r"[^a-zA-Z0-9]+", ' ', abstract)
-                abstract=abstract.replace("0123456789", ' ')
+                abstract=re.sub(r"[^a-zA-Z]+", ' ', abstract)
+                ''.join([i for i in abstract if not i.isdigit()])
                 word_bank+=abstract.lower().split()
                 
             for word in word_bank:
                  word=word.lower()
+                 if len(word)>4 :
+                        word=word[0:4]
                  #word=word.isalnum()
                  if (word in self.train_dict[ex]) :
                      self.train_dict[ex][word]+=1/len(word_bank)#pour une raison X il faut multiplier ici...
@@ -62,8 +64,11 @@ class Bayes_naif:
             
             y=[]
             for (i,abstract) in enumerate(test_data[:,1]) :
+                print(i)
                 abstract=re.sub(r"[^a-zA-Z]+", ' ', abstract)
-                abstract=abstract.replace("0123456789", ' ')
+               
+                ''.join([i for i in abstract if not i.isdigit()])
+                    
                 abstract=abstract.lower().split()
                 answers=np.zeros(self.n_classes)
                 abstract=np.array(abstract)
@@ -107,14 +112,14 @@ def error_rate(train,val_data):
             yy=y
             erreur_min=errors
             hype=hyper_param
-    return erreur_min,yy,hype
+    return erreur_min,yy,hype,f
 
     
 
 
 df1=train.values[0:7000,:]
 df2=train.values[7000:7500,:]
-erreur,y,hype=error_rate(df1,df2)
+erreur,y,hype,f=error_rate(df1,df2)
 test=pd.read_csv('data/test.csv')
 #%%
 f=Bayes_naif(train.values[1500:7500],train.values[1500:7500,2])

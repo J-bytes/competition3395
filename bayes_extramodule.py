@@ -8,9 +8,12 @@ import numpy as np
 import pandas as pd
 import regex as re
 from nltk.stem import WordNetLemmatizer 
-
-
-
+import nltk
+from nltk.corpus import wordnet as wn
+from nltk.stem.wordnet import WordNetLemmatizer
+from stemming.porter2 import stem 
+from nltk.stem import PorterStemmer
+#ps=nltk.stem.SnowballStemmer('english')#PorterStemmer()
 lemmatizer = WordNetLemmatizer() 
 train=pd.read_csv('data/train.csv')
 def draw_rand_label(x, label_list):
@@ -24,7 +27,10 @@ def draw_rand_label(x, label_list):
 
 
 #mot_interdit=['the','a','we','of','and','in','to','if','is','with','that','for','are','by','from','at','0','1','on','this','be','as','an','2','3','have','i','not','on']
-mot_interdit=np.loadtxt('1-1000.txt',dtype=str)[0:300]
+interdit=np.loadtxt('1-1000.txt',dtype=str)[0:300]
+mot_interdit=[]
+for mot in interdit :
+    mot_interdit.append(stem(mot))
 class Bayes_naif:
     def __init__(self,train_inputs,train_labels):
         
@@ -46,12 +52,16 @@ class Bayes_naif:
         for (ex,c) in enumerate(self.classes) :
             word_bank=[]
             for abstract in self.train_inputs[np.where(self.train_inputs[:,2]==c)][:,1] :
-                abstract=re.sub(r"[^a-zA-Z0-9]+", ' ', abstract)
-                abstract=abstract.replace("0123456789", ' ')
+                abstract=re.sub(r"[^a-zA-Z]+", ' ', abstract)
+               
+                ''.join([i for i in abstract if not i.isdigit()])
                 word_bank+=abstract.lower().split()
                 
             for word in word_bank:
+                
                  word=lemmatizer.lemmatize(word)
+                 word=stem(word)
+                 
                  word=word.lower()
                  #word=word.isalnum()
                  if (word in self.train_dict[ex]) :
@@ -74,9 +84,10 @@ class Bayes_naif:
                 answers=np.zeros(self.n_classes)
                 abstract=np.array(abstract)
                 for word in abstract:
-                    word=word.lower()
+                    
                     word=lemmatizer.lemmatize(word)
-                    #word=word.isalnum()
+                    word=stem(word)
+                    word=word.lower()
                     for ex in range(0,(self.n_classes)) :
                         if answers[ex]==0 and word in self.train_dict[ex]:
                              p=self.train_dict[ex][word]
@@ -114,14 +125,14 @@ def error_rate(train,val_data):
             yy=y
             erreur_min=errors
             hype=hyper_param
-    return erreur_min,yy,hype
+    return erreur_min,yy,hype,f
 
     
 
 
 df1=train.values[0:6000,:]
 df2=train.values[6000:7500,:]
-erreur,y,hype=error_rate(df1,df2)
+erreur,y,hype,f=error_rate(df1,df2)
 test=pd.read_csv('data/test.csv')
 #%%
 f=Bayes_naif(train.values,train.values[:,2])

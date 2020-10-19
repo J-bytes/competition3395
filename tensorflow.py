@@ -15,31 +15,29 @@ import pandas as pd
 import numpy as np
 import regex as re
 from nltk.stem import WordNetLemmatizer 
-
-param_grid = [
-  {'C': [1, 10, 100, 1000], 'kernel': ['linear']},
-  {'C': [1, 10, 100, 1000], 'gamma': [0.001, 0.0001], 'kernel': ['rbf']},
- ]
-
+from stemming.porter2 import stem 
+from sklearn.feature_extraction.text import TfidfVectorizer
+import nltk
 lemmatizer = WordNetLemmatizer() 
-mot_interdit=np.loadtxt('1-1000.txt',dtype=str)[0:600]
+mot_interdit=np.loadtxt('1-1000.txt',dtype=str)[0:250]
 #clf = svm.SVC(kernel='poly')
 svc=svm.SVC()
-clf = GridSearchCV(svc, param_grid)
+from nltk.tokenize import RegexpTokenizer
 
 
 class LinearModel:
     def __init__(self,train_inputs,train_labels):
         interdiction=[]
         for interdit in mot_interdit :
-            interdiction.append(lemmatizer.lemmatize(interdit))
+            interdiction.append(stem(lemmatizer.lemmatize(interdit)))
         self.temp_word=[]
         for abstract in train_inputs[:,1] :
-                 abstract=re.sub(r"[^a-zA-Z0-9]+", ' ', abstract)
-                 abstract=abstract.replace("0123456789", ' ')
+                 abstract=re.sub(r"[^a-zA-Z]+", ' ', abstract)
+                 ''.join([i for i in abstract if not i.isdigit()])
                  temp=[]
                  for word in abstract.lower().split() :
                      word=lemmatizer.lemmatize(word)
+                     word=stem(word)
                      if word not in interdiction :
                          if word not in ['0','1','2','3','4','5','6','7','8','9'] :
                              if word not in ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'] :
@@ -65,15 +63,22 @@ class LinearModel:
             self.train_dict.append({})
             
         self.A=np.random.random(size=(self.n_dict,int(self.n_dict/20)))
-    def word2vec(self,abstract) :
-        abstract=re.sub(r"[^a-zA-Z0-9]+", ' ', abstract)
-        abstract=abstract.replace("0123456789", ' ')
+    def word2vec(self,abstracts,abstracts2) :
+        abstracted=[]
+        for abstract in abstracts :
+            abstract=''.join([i for i in abstract if not i.isdigit()])
+            
+            abstract=''.join([" "+lemmatizer.lemmatize(i) for i in abstract.split() ])
+           
+            abstracted.append(re.sub(r"[^a-zA-Z]+", ' ', abstract))
+        """
         words=abstract.lower().split()
        
       
         vecteur=np.zeros(self.n_dict)
         for word in words :
             word=lemmatizer.lemmatize(word)
+            word=stem(word)
             if word in self.dict :
                 vecteur[np.where(self.dict==word)[0]]+=1/len(words)
         
@@ -83,7 +88,41 @@ class LinearModel:
         vecteur/=maximum
         #vecteur=np.matmul(np.transpose(self.A),vecteur)
         #vecteur=np.array(np.fft.ifft(vecteur),dtype=np.float32)
-        return vecteur
+        """
+  
+        cv=TfidfVectorizer(r'[a-z]')
+        vecteur=cv.fit_transform(abstracted).toarray()
+        
+        
+        abstracted=[]
+        for abstract in abstracts2 :
+            abstract=''.join([i for i in abstract if not i.isdigit()])
+            
+            abstract=''.join([" "+lemmatizer.lemmatize(i) for i in abstract.split() ])
+           
+            abstracted.append(re.sub(r"[^a-zA-Z]+", ' ', abstract))
+        """
+        words=abstract.lower().split()
+       
+      
+        vecteur=np.zeros(self.n_dict)
+        for word in words :
+            word=lemmatizer.lemmatize(word)
+            word=stem(word)
+            if word in self.dict :
+                vecteur[np.where(self.dict==word)[0]]+=1/len(words)
+        
+        #vecteur=np.matmul(np.transpose(self.A),vecteur[:,np.newaxis])
+        #vecteur=np.array(np.fft.ifft(vecteur),dtype=np.float32)
+        maximum=np.max(vecteur) # normalisation
+        vecteur/=maximum
+        #vecteur=np.matmul(np.transpose(self.A),vecteur)
+        #vecteur=np.array(np.fft.ifft(vecteur),dtype=np.float32)
+        """
+  
+        #cv=TfidfVectorizer(r'[a-z]')
+        vecteur2=cv.transform(abstracted).toarray()
+        return vecteur,vecteur2
     
     def answer2vec(self,y) :
         a=np.where(self.classes==y)[0]
@@ -92,26 +131,26 @@ class LinearModel:
 train=pd.read_csv('data/train.csv')
 
 
-df1=train.values[0:7000,:]
-df2=train.values[7000:7500,:]
+df1=train.values[0:7200,:]
+df2=train.values[7200:7500,:]
 f=LinearModel(df1,df1[:,2])
+test=pd.read_csv('data/test.csv')
+df3=test.values
 
-X=[]
+
 y=[]
 for (ex,abstract) in enumerate(df1[:,1]):
     print(ex)
-    X.append(f.word2vec(abstract))
+   
     y.append(f.answer2vec(df1[ex,2]))
+X,X3=f.word2vec(train.values[:,1],test.values[:,1])
 X=np.array(X)
 y=np.array(y)
 
-X2=[]
-for (ex,abstract) in enumerate(df2[:,1]):
-    print(ex)
-    X2.append(f.word2vec(abstract))
-  
-X2=np.array(X2)
+X2=X[7200:7500]
 
+X2=np.array(X2)
+X=X[0:7200]
 """
 model = tf.keras.models.Sequential([
   tf.keras.layers.Flatten(input_shape=(1178,1)),
@@ -156,12 +195,13 @@ dummy_y = tf.keras.utils.to_categorical(encoded_Y)
 
 # define baseline model
 
-def baseline_model(taille1):
+def baseline_model():
 	# create model
 	model = Sequential()
-	model.add(Dense(taille1, input_dim=24792, activation='sigmoid'))
+	model.add(Dense(15, input_dim=24414, activation='softmax'))
+	#model.add(Dense(10, activation='softmax'))
+	#model.add(Dense(4, activation='softmax'))
 	#model.add(Dense(15, activation='sigmoid'))
-	model.add(Dense(15, activation='sigmoid'))
 	#
 	#model.add(Dense(15, activation='sigmoid'))
 	# Compile model
@@ -174,34 +214,27 @@ def baseline_model(taille1):
 #results = cross_val_score(estimator, X, dummy_y, cv=kfold)
 #print("Baseline: %.2f%% (%.2f%%)" % (results.mean()*100, results.std()*100))
 #%%
+#epoch=50
 Erreur=100
-for taille1 in range(5,15,1) :
+
        
-    model=baseline_model(taille1)
-    model.fit(X,dummy_y, epochs=100, batch_size=5, verbose=2,shuffle=True,use_multiprocessing=True,validation_data=(X2, dummy_y2))
+model=baseline_model()
+model.fit(X,dummy_y, epochs=50, batch_size=15, verbose=2,shuffle=True,use_multiprocessing=True,validation_data=(X2, dummy_y2))
+
+y=model.predict(X2)
+yy=[]
+for i in y :
+    a=np.argmax(i)
+    yy.append(f.classes[a])
     
-    y=model.predict(X2)
-    yy=[]
-    for i in y :
-        a=np.argmax(i)
-        yy.append(f.classes[a])
-        
-    yy=np.array(yy)
-    a=np.array(df2[:,2],dtype='<U17')
-    err=len(np.where(a!=yy)[0])/len(df2[:,2])
-    print("erreur",err)
-    if err<Erreur :
-        Erreur=err
-        taille_final=taille1
+yy=np.array(yy)
+a=np.array(df2[:,2],dtype='<U17')
+err=len(np.where(a!=yy)[0])/len(df2[:,2])
+print("erreur",err)
+   
     
 #%%
-test=pd.read_csv('data/test.csv')
-df1=test.values
-X3=[]
-for (ex,abstract) in enumerate(df1[:,1]):
-    print(ex)
-    X3.append(f.word2vec(abstract))
-  
+
 X3=np.array(X3)
 
 y=model.predict(X3)
