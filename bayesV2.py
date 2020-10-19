@@ -8,9 +8,18 @@ import numpy as np
 import pandas as pd
 import regex as re
 train=pd.read_csv('data/train.csv')
+def draw_rand_label(x, label_list):
+    seed = abs(np.sum(x))
+    while seed < 1:
+       
+        seed = 10 * seed
+    seed = int(1000000 * seed)
+    np.random.seed(seed)
+    return np.random.choice(label_list)
+
 
 #mot_interdit=['the','a','we','of','and','in','to','if','is','with','that','for','are','by','from','at','0','1','on','this','be','as','an','2','3','have','i','not','on']
-mot_interdit=np.loadtxt('1-1000.txt',dtype=str)[0:500]
+mot_interdit=np.loadtxt('1-1000.txt',dtype=str)[0:300]
 class Bayes_naif:
     def __init__(self,train_inputs,train_labels):
         
@@ -33,6 +42,7 @@ class Bayes_naif:
             word_bank=[]
             for abstract in self.train_inputs[np.where(self.train_inputs[:,2]==c)][:,1] :
                 abstract=re.sub(r"[^a-zA-Z0-9]+", ' ', abstract)
+                abstract=abstract.replace("0123456789", ' ')
                 word_bank+=abstract.lower().split()
                 
             for word in word_bank:
@@ -52,28 +62,29 @@ class Bayes_naif:
             
             y=[]
             for (i,abstract) in enumerate(test_data[:,1]) :
-                abstract=re.sub(r"[^a-zA-Z0-9]+", ' ', abstract)
+                abstract=re.sub(r"[^a-zA-Z]+", ' ', abstract)
+                abstract=abstract.replace("0123456789", ' ')
                 abstract=abstract.lower().split()
                 answers=np.zeros(self.n_classes)
                 abstract=np.array(abstract)
                 for word in abstract:
                     word=word.lower()
-                    #word=word.isalnum()
+                   
                     for ex in range(0,(self.n_classes)) :
                         if answers[ex]==0 and word in self.train_dict[ex]:
                              p=self.train_dict[ex][word]
                              answers[ex]=p
-                        if word in self.train_dict[ex] and not word in mot_interdit :
-                            Pmot=1
+                        if word in self.train_dict[ex] and not word in mot_interdit and not word in ['0','1''2','3','4','5','6','7','8','9'] :
+                            Pmot=0
                             for ex2 in range(0,(self.n_classes)) :
                                 try : 
-                                    Pmot*=(self.train_dict[ex2][word])**2
+                                    Pmot+=(self.train_dict[ex2][word])
                                 except :
-                                    pass
+                                    Pmot+=0
                                     
-                            p=self.train_dict[ex][word]/Pmot
+                            p=(self.train_dict[ex][word])/Pmot
                             
-                            answers[ex]+=np.log(p+1+0.00001)#/hyper_param #!!!! overflow
+                            answers[ex]+=np.log(p+1)#/hyper_param #!!!! overflow
                             #print(answers[ex])
                       
                             
@@ -86,7 +97,7 @@ class Bayes_naif:
 def error_rate(train,val_data):
     erreur_min=1
     
-    for hyper_param in np.arange(0.001,0.1,0.01) :
+    for hyper_param in [8] :
         f=Bayes_naif(train,train[:,2])
         f.train()
        # print(f.train_dict)
@@ -101,12 +112,12 @@ def error_rate(train,val_data):
     
 
 
-df1=train.values[0:6000,:]
-df2=train.values[6000:7500,:]
+df1=train.values[0:7000,:]
+df2=train.values[7000:7500,:]
 erreur,y,hype=error_rate(df1,df2)
 test=pd.read_csv('data/test.csv')
 #%%
-f=Bayes_naif(train.values,train.values[:,2])
+f=Bayes_naif(train.values[1500:7500],train.values[1500:7500,2])
 f.train()
 # print(f.train_dict)
 y=f.compute_predictions(test.values,8)

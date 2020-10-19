@@ -20,6 +20,8 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import pandas as pd
+import regex as re
+mot_interdit=np.loadtxt('1-1000.txt',dtype=str)[0:300]
 #==================================================================
 #Variables globales
 
@@ -36,35 +38,46 @@ beta1,beta2=0.9,0.999
 eps=1e-8
 m=1
 
-
 train=pd.read_csv('data/train.csv')
 df1=train.values[0:6000,:]
 df2=train.values[6000:7500,:]
 temp_word=[]
 for abstract in df1[:,1] :
+        abstract=re.sub(r"[^a-zA-Z]+", ' ', abstract)
+        abstract=abstract.replace("0123456789", ' ')
         temp_word+=abstract.lower().split()
       
 answer_dict=np.unique(df1[:,2])
 dict=np.unique(temp_word)
 n_dict=len(dict)
 
+A=np.random.random(size=(n_dict,int(n_dict/20)))
 def answer2vec(sujet) :
     vecteur=np.zeros(len(answer_dict))
     vecteur[np.where(answer_dict==sujet)]+=1
     return vecteur
 def word2vec(abstract) :
+        abstract=re.sub(r"[^a-zA-Z]+", ' ', abstract)
+        abstract=abstract.replace("0123456789", ' ')
         words=abstract.lower().split()
+        
+        for interdit in mot_interdit :
+            try :
+                words.remove(interdit)
+            except : 
+                pass
         vecteur=np.zeros(n_dict)
         for word in words :
             vecteur[np.where(dict==word)[0]]+=1
         
-      
+        
+        vecteur=np.matmul(np.transpose(A),vecteur[:,np.newaxis])
         return vecteur
 #==================================================================
 def innitialisation() :
    
    
-    ni,nh,nn,no,nf,nl    =n_dict,100,20,15,15,15        # nombre d’unites d’entree, interne et de sortie
+    ni,nh,nn,no,nf,nl    =int(n_dict/20),80,80,40,20,15        # nombre d’unites d’entree, interne et de sortie
     wih   =np.zeros([ni,nh])   # poids des connexions entree vers interne
     bih   =np.zeros([ni,nh])
     whn   =np.zeros([nh,nn])   # poids des connexions interne vers sortie
@@ -87,7 +100,7 @@ def innitialisation() :
     deltao=np.zeros(no)        # gradient d’erreur des neurones de sortie
     deltan=np.zeros(nn)        # gradient d’erreur des neurones internes
     deltah=np.zeros(nh)        # gradient d’erreur des neurones internes
-    eta   =0.01                # parametre d’apprentissage
+    eta   =0.1                # parametre d’apprentissage
   
     
     #initialisation aléatoire des biais et des poids
@@ -283,7 +296,7 @@ def training(param) :
     global bestf,bestx,m,compteur
     wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=param
     nset  =6000              # nombre de membres dans ensemble d’entrainement
-    niter =25            # nombre d’iterations d’entrainement
+    niter =200            # nombre d’iterations d’entrainement
     oset  =np.zeros([nset,nl]) # sortie pour l’ensemble d’entrainement
     tset  =np.zeros([nset,ni]) # vecteurs-entree l’ensemble d’entrainement
     rmserr=np.zeros(niter)     # erreur rms d’entrainement
@@ -291,9 +304,9 @@ def training(param) :
     #lecture/initialisationdel’ensembled’entrainement
     for i in range(0,nset) :
         print(i)
-        tset[i,:]=word2vec(df1[i,1])
+        tset[i,:]=word2vec(df1[i,1])[:,0]
                         
-        oset[i]=answer2vec(df1[i,2])
+        oset[i,:]=answer2vec(df1[i,2])
     
     tset=normalisation(tset)
     
@@ -316,22 +329,22 @@ def training(param) :
                 wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl=backprop(param) # retropropagation          # retropropagation
     #ENDbouclesurensemble
             
-            rmserr[iter]=math.sqrt(sum/nset/1)   # erreur rms a cette iteration
+            #rmserr[iter]=math.sqrt(sum/nset/1)   # erreur rms a cette iteration
             
             reponse,cheatsheet=prediction(param,df1,nset)
-            plt.plot(iter,1-len(np.where(np.abs(cheatsheet-np.round(reponse,0))==0)[0])/1000,'.',color='red')
+            #plt.plot(iter,1-len(np.where(np.abs(cheatsheet-np.round(reponse,0))==0)[0])/1000,'.',color='red')
           
             #Maintenantlaphasedetestiraitci-dessous...
             #ENDMAIN
-            err2=np.mean((reponse-cheatsheet)**2)
-            rmserr2=math.sqrt(err2)
-            plt.plot(iter,rmserr2,'.',color='black')
-    plt.plot(rmserr,'.',color='blue')
+            err2=len(np.where(np.argmax(reponse,axis=1)!=np.argmax(cheatsheet,axis=1))[0])/len(reponse)
+            #rmserr2=math.sqrt(err2)
+            #plt.plot(iter,rmserr2,'.',color='black')
+    # plt.plot(rmserr,'.',color='blue')
     #plt.semilogx()
-    plt.legend()
-    plt.xlabel('iteration')
-    plt.ylabel('Erreur')
-    plt.show()
+   # plt.legend()
+    #plt.xlabel('iteration')
+    #plt.ylabel('Erreur')
+    #plt.show()
     return wih,whn,wno,wof,wfl,ni,nh,nn,no,nf,nl,ivec,sh,so,sn,sf,sl,err,deltao,deltah,deltan,deltaf,deltal,eta,bih,bhn,bno,bof,bfl
    
 
@@ -347,7 +360,7 @@ def prediction(param,df1,nset2) :
     
     cheatsheet  =np.zeros([nset2,nl])
     for i in range(0,nset2) :
-        tset[i,:]=word2vec(df1[i,1])
+        tset[i,:]=word2vec(df1[i,1])[:,0]
         cheatsheet[i]=answer2vec(df1[i,2])               
         oset[i]=answer2vec(df1[i,2])
     

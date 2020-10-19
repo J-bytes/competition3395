@@ -40,7 +40,8 @@ class Bayes_naif:
             word_bank=[]
             for abstract in self.train_inputs[np.where(self.train_inputs[:,2]==c)][:,1] :
                 abstract=re.sub(r"[^a-zA-Z0-9]+", ' ', abstract)
-                word_bank+=abstract.split()
+                abstract=abstract.replace("0123456789", ' ')
+                word_bank+=abstract.lower().split()
             for word in word_bank:
                  
                  if (word in self.train_dict[ex]) :
@@ -68,10 +69,10 @@ class Bayes_naif:
                         if word in self.train_dict[ex] :
                             p=self.train_dict[ex][word]
                             
-                            answers[ex]*=p
+                            answers[ex]*=np.lop
                             
                 #print(answers)
-                y.append(self.classes[np.argmax(answers*self.n_byclasses)])
+                y.append(self.classes[np.argmax(answers)])
                     
 
             return y
