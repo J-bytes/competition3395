@@ -9,10 +9,14 @@ import pandas as pd
 import regex as re
 from nltk.stem import WordNetLemmatizer 
 import nltk
+
+nltk.download('punkt')
+nltk.download('stopwords')
 from nltk.corpus import wordnet as wn
 from nltk.stem.wordnet import WordNetLemmatizer
 from stemming.porter2 import stem 
 from nltk.stem import PorterStemmer
+from nltk.corpus import stopwords
 #ps=nltk.stem.SnowballStemmer('english')#PorterStemmer()
 lemmatizer = WordNetLemmatizer() 
 train=pd.read_csv('data/train.csv')
@@ -54,15 +58,16 @@ class Bayes_naif:
             for abstract in self.train_inputs[np.where(self.train_inputs[:,2]==c)][:,1] :
                 abstract=re.sub(r"[^a-zA-Z]+", ' ', abstract)
                
-                ''.join([i for i in abstract if not i.isdigit()])
+                abstract=''.join([i for i in abstract if not i.isdigit()])
+                abstract=' '.join(token.lower() for token in nltk.word_tokenize(abstract) if token.lower() not in stopwords.words('english'))
                 word_bank+=abstract.lower().split()
                 
             for word in word_bank:
                 
                  word=lemmatizer.lemmatize(word)
-                 word=stem(word)
+                 #word=stem(word)
                  
-                 word=word.lower()
+                 
                  #word=word.isalnum()
                  if (word in self.train_dict[ex]) :
                      self.train_dict[ex][word]+=1/len(word_bank)#pour une raison X il faut multiplier ici...
@@ -80,14 +85,16 @@ class Bayes_naif:
             for (i,abstract) in enumerate(test_data[:,1]) :
                 print(i)
                 abstract=re.sub(r"[^a-zA-Z0-9]+", ' ', abstract)
+                abstract=''.join([i for i in abstract if not i.isdigit()])
+                abstract=' '.join(token.lower() for token in nltk.word_tokenize(abstract) if token.lower() not in stopwords.words('english'))
                 abstract=abstract.lower().split()
                 answers=np.zeros(self.n_classes)
                 abstract=np.array(abstract)
                 for word in abstract:
                     
                     word=lemmatizer.lemmatize(word)
-                    word=stem(word)
-                    word=word.lower()
+                    #word=stem(word)
+                   
                     for ex in range(0,(self.n_classes)) :
                         if answers[ex]==0 and word in self.train_dict[ex]:
                              p=self.train_dict[ex][word]

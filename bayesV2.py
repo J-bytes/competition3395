@@ -87,7 +87,7 @@ class Bayes_naif:
                                 except :
                                     Pmot+=0
                                     
-                            p=(self.train_dict[ex][word])/Pmot
+                            p=(self.train_dict[ex][word])*Pmot
                             
                             answers[ex]+=np.log(p+1)#/hyper_param #!!!! overflow
                             #print(answers[ex])
