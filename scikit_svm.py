@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 import regex as re
 from nltk.stem import WordNetLemmatizer 
-
+import matplotlib.pyplot as plt
 from stemming.porter2 import stem 
 from sklearn.feature_extraction.text import TfidfVectorizer
 import nltk
@@ -25,10 +25,12 @@ svc=svm.SVC()
 trans_table = {ord(c): None for c in string.punctuation + string.digits}  
 from nltk.tokenize import RegexpTokenizer
 
+param1=np.array([0.1,1,2,5,10])
+param2=np.array([0.1,0.5,0.8,1,2,5])
 param_grid = [
-  { 'degree' :[0.5,1,1.5],'C' :[1,2,10],'gamma':[1,2,5], 'kernel' : ['poly']},
-  #{'C':  [1,10,100], 'gamma': [0.1,1e-2], 'kernel': ['rbf']},
-   
+  { 'degree' :param1,'C' :param2,'gamma' :['scale'], 'kernel' : ['poly']},
+  #{'C':  param1, 'gamma': param2, 'kernel': ['rbf']},
+  #{'C':[0.01,0.1,1,10,100],'kernel' :['linear']}
  ]
 
 lemmatizer = WordNetLemmatizer() 
@@ -46,37 +48,7 @@ def tokenize(text):
 
 class LinearModel:
     def __init__(self,train_inputs,train_labels):
-        self.temp_word=[]
-        for abstract in train_inputs[:,1] :
-                 abstract=re.sub(r"[^a-zA-Z]+", ' ', abstract)
-                 
-                 temp=[]
-                 for word in abstract.lower().split() :
-                     word=lemmatizer.lemmatize(word)
-                     temp+=[word]
-                     
-                 self.temp_word+=temp
-                 for interdit in mot_interdit :
-                    try :
-                        temp.remove(interdit)
-                    except : 
-                        pass
-        self.dict=np.unique(self.temp_word)
-        self.n_dict=len(self.dict)
-        self.n_classes = len(np.unique(train_labels))
-        self.classes=np.unique(train_labels)
-        self.train_inputs=train_inputs
-        self.train_dict=[]
-        self.A=0
-        nn=np.zeros((self.n_classes))
-        for (ex,c) in enumerate(self.classes) :
-            nn[ex]+=len(np.where(train_inputs[:,2]==c)[0])
-        self.n_byclasses=nn
-        
-        
-       
-        for i in range(0,len(self.classes)) :
-            self.train_dict.append({})
+        pass
             
             
     def word2vec(self,abstracts,abstracts2) :
@@ -138,7 +110,7 @@ train=pd.read_csv('data/train.csv')
 import tensorflow as tf
 from tensorflow import keras
 from sklearn.preprocessing import LabelEncoder
-df1=train.values[0:6000,:]
+df1=train.values[0:7500,:]
 df2=train.values[6000:7500,:]
 f=LinearModel(df1,df1[:,2])
 
@@ -159,6 +131,37 @@ X,X2=f.word2vec(df1[:,1],df2[:,1])
 print('Now fitting')
 clf.fit(X, y)
 
+# We extract just the scores
+
+
+
+
+def plot_grid_search(cv_results, grid_param_1, grid_param_2, name_param_1, name_param_2):
+    # Get Test Scores Mean and std for each grid search
+    scores_mean = cv_results['mean_test_score']
+    scores_mean = np.array(scores_mean).reshape(len(grid_param_2),len(grid_param_1))
+
+    scores_sd = cv_results['std_test_score']
+    scores_sd = np.array(scores_sd).reshape(len(grid_param_2),len(grid_param_1))
+
+    # Plot Grid search scores
+    _, ax = plt.subplots(1,1)
+
+    # Param1 is the X-axis, Param 2 is represented as a different curve (color line)
+    for idx, val in enumerate(grid_param_2):
+        ax.plot(grid_param_1, scores_mean[idx,:], '-o', label= name_param_2 + ': ' + str(val))
+
+    #ax.set_title("Grid Search Scores", fontsize=20, fontweight='bold')
+    ax.set_xlabel(name_param_1, fontsize=16)
+    ax.set_ylabel(r'Taux de réussite sur $D_{validation}$', fontsize=16)
+    ax.legend(loc="best", fontsize=15)
+    ax.grid('on')
+
+# Calling Method 
+plot_grid_search(clf.cv_results_,param1 ,param2 , 'degree','C')
+
+
+#%%
 answer=clf.predict(X2)
 answer2=[]
 for ans in answer :

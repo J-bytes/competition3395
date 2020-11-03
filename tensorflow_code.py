@@ -142,8 +142,8 @@ class LinearModel:
 train=pd.read_csv('data/train.csv')
 
 
-df1=train.values[0:6500,:]
-df2=train.values[6500:7500,:]
+df1=train.values[0:7500,:]
+#df2=train.values[6500:7500,:]
 f=LinearModel(df1,df1[:,2])
 test=pd.read_csv('data/test.csv')
 df3=test.values
@@ -154,14 +154,14 @@ for (ex,abstract) in enumerate(df1[:,1]):
     print(ex)
    
     y.append(f.answer2vec(df1[ex,2]))
-X,X3=f.word2vec(train.values[:,1],test.values[:,1])
+X,X4=f.word2vec(train.values[:,1],test.values[:,1])
 X=np.array(X)
 y=np.array(y)
 
 X2=X[6500:7500]
 
 X2=np.array(X2)
-X=X[0:6500]
+X=X[0:7500]
 """
 model = tf.keras.models.Sequential([
   tf.keras.layers.Flatten(input_shape=(1178,1)),
@@ -190,14 +190,14 @@ from sklearn.pipeline import Pipeline
 # load dataset
 
 # encode class values as integers
-y2=df2[:,2]
+#y2=df2[:,2]
 encoder = LabelEncoder()
 encoder.fit(y)
 encoded_Y = encoder.transform(y)
 encoder = LabelEncoder()
-encoder.fit(y2)
-encoded_Y2 = encoder.transform(y2)
-dummy_y2 = tf.keras.utils.to_categorical(encoded_Y2)
+#encoder.fit(y2)
+#encoded_Y2 = encoder.transform(y2)
+#dummy_y2 = tf.keras.utils.to_categorical(encoded_Y2)
 # convert integers to dummy variables (i.e. one hot encoded)
 dummy_y = tf.keras.utils.to_categorical(encoded_Y)
 
@@ -217,22 +217,55 @@ def baseline_model():
 	#
 	#model.add(Dense(15, activation='sigmoid'))
 	# Compile model
-	model.compile(loss='categorical_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
+	model.compile(loss='CategoricalCrossentropy', optimizer='rmsprop', metrics=['accuracy'])
 	return model
  
 
-#estimator = KerasClassifier(build_fn=baseline_model, epochs=20, batch_size=5, verbose=2,shuffle=True,use_multiprocessing=True,)
-#kfold = KFold(n_splits=2, shuffle=True)
-#results = cross_val_score(estimator, X, dummy_y, cv=kfold)
+#estimator = KerasClassifier(build_fn=baseline_model, epochs=60, batch_size=5, verbose=2,shuffle=True,use_multiprocessing=True,)
+#kfold = KFold(n_splits=10, shuffle=True)
+#history = cross_val_score(estimator, X, dummy_y, cv=kfold)
+
+
 #print("Baseline: %.2f%% (%.2f%%)" % (results.mean()*100, results.std()*100))
 #%%
-#epoch=50
-Erreur=100
 
-       
-model=baseline_model()
-model.fit(X,dummy_y, epochs=120, batch_size=15, verbose=2,shuffle=True,use_multiprocessing=True,validation_data=(X2, dummy_y2))
+acc=[]
+val_acc=[]
+loss=[]
+val_loss=[]
+for k in range(0,10) :
+    n=len(X)
+    X2=X[int(n/10*k):int(n/10*(k+1))]
+    dummy_y2=dummy_y[int(n/10*k):int(n/10*(k+1))]
+    X3=np.concatenate((X[0:int(n/10*k),:],X[int(n/10*(k+1))::,:]))
+    dummy_y3=np.concatenate((dummy_y[0:int(n/10*k)],dummy_y[int(n/10*(k+1)):]))
+    model=baseline_model()
+    history=model.fit(X3,dummy_y3, epochs=120, batch_size=15, verbose=2,shuffle=True,use_multiprocessing=True,validation_data=(X2, dummy_y2))
+    acc.append(history.history['accuracy'])
+    val_acc.append(history.history['val_accuracy'])
+    loss.append(history.history['loss'])
+    val_loss.append(history.history['val_loss'])
 
+# summarize history for accuracy
+x=np.arange(0,120)
+# summarize history for accuracy
+plt.errorbar(x,np.mean(acc,axis=0),yerr=np.std(acc),label='train accuracy')
+plt.errorbar(x,np.mean(val_acc,axis=0),yerr=np.std(val_acc),label='val accuracy')
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.show()
+# summarize history for loss
+plt.errorbar(x,np.mean(loss,axis=0),yerr=np.std(loss),label='train loss')
+plt.errorbar(x,np.mean(val_loss,axis=0),yerr=np.std(val_loss),label='val loss')
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.show()
+
+"""
 y=model.predict(X2)
 yy=[]
 for i in y :
@@ -243,13 +276,13 @@ yy=np.array(yy)
 a=np.array(df2[:,2],dtype='<U17')
 err=len(np.where(a!=yy)[0])/len(df2[:,2])
 print("erreur",err)
-   
+"""
     
 #%%
 
-X3=np.array(X3)
+X4=np.array(X4)
 
-y=model.predict(X3)
+y=model.predict(X4)
 yy=[]
 for i in y :
     a=np.argmax(i)
@@ -257,5 +290,5 @@ for i in y :
     
 
 df = pd.DataFrame(yy, columns=["Category"])
-df.to_csv('solution.csv')
+df.to_csv('solution_tensorflow.csv')
     
