@@ -223,11 +223,11 @@ def baseline_model():
 	return model
  
 #%%
-estimator = KerasClassifier(build_fn=baseline_model, epochs=60, batch_size=5, verbose=2,shuffle=True,use_multiprocessing=True,)
-kfold = KFold(n_splits=10, shuffle=True)
-history = cross_val_score(estimator, X, dummy_y, cv=kfold)
+#estimator = KerasClassifier(build_fn=baseline_model, epochs=60, batch_size=5, verbose=2,shuffle=True,use_multiprocessing=True,)
+#kfold = KFold(n_splits=10, shuffle=True)
+#history = cross_val_score(estimator, X, dummy_y, cv=kfold)
 
-print("Baseline: %.2f%% (%.2f%%)" % (history.mean()*100, history.std()*100))
+#print("Baseline: %.2f%% (%.2f%%)" % (history.mean()*100, history.std()*100))
 
 
 #%%
@@ -239,14 +239,14 @@ acc=[]
 val_acc=[]
 loss=[]
 val_loss=[]
-for k in range(0,1) :
+for k in range(0,10) :
     n=len(X)
     X2=X[int(n/10*k):int(n/10*(k+1))]
     dummy_y2=dummy_y[int(n/10*k):int(n/10*(k+1))]
     X3=np.concatenate((X[0:int(n/10*k),:],X[int(n/10*(k+1))::,:]))
     dummy_y3=np.concatenate((dummy_y[0:int(n/10*k)],dummy_y[int(n/10*(k+1)):]))
     model=baseline_model()
-    history=model.fit(X3,dummy_y3, epochs=120, batch_size=15, verbose=2,shuffle=True,use_multiprocessing=True,validation_data=(X2, dummy_y2))
+    history=model.fit(X3,dummy_y3, epochs=39, batch_size=15, verbose=2,shuffle=True,use_multiprocessing=True,validation_data=(X2, dummy_y2))
     acc.append(history.history['accuracy'])
     val_acc.append(history.history['val_accuracy'])
     loss.append(history.history['loss'])
